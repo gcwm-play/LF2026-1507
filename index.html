@@ -5,32 +5,38 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>CPFB EXPLORER 3.0</title>
     
-    <!-- Libraries: Tailwind, React, Lucide Icons, and Firebase (Compat Version for maximum stability) -->
+    <!-- STABLE LIBRARIES -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    
+
+    <!-- FIREBASE COMPAT SDKs (Most reliable for single-file deployment) -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
     <style>
+        body { background-color: #020617; color: white; font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 0; }
         @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
         .animate-shake { animation: shake 0.4s ease-in-out; }
-        body { background-color: #020617; color: white; -webkit-tap-highlight-color: transparent; overflow-x: hidden; }
-        input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-        .transition-bg { transition: background-color 1s ease; }
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
     </style>
 </head>
 <body>
-    <div id="root"></div>
+    <div id="root">
+        <!-- Initial Loading State (Shown if JS fails to start) -->
+        <div style="height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #64748b;">
+            <div style="width: 40px; height: 40px; border: 3px solid #f59e0b; border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+            <p style="margin-top: 20px; font-family: monospace; font-size: 10px; letter-spacing: 2px;">LOADING INTERFACE...</p>
+        </div>
+    </div>
 
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
-        // --- YOUR FIREBASE CONFIG (Already Injected) ---
+        // --- YOUR FIREBASE CONFIG ---
         const firebaseConfig = {
             apiKey: "AIzaSyCtLboyP7fDO70VksvVvcRAhwRQfTJ1o5o",
             authDomain: "cpfb-explorer.firebaseapp.com",
@@ -40,33 +46,39 @@
             appId: "1:418397881163:web:2cd412b38b60c3c9149ece"
         };
 
-        // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
+        // Initialize Global Firebase
+        try {
+            if (!firebase.apps.length) {
+                firebase.initializeApp(firebaseConfig);
+            }
+        } catch (err) {
+            document.getElementById('root').innerHTML = `<div style="padding: 20px; color: red;">Firebase Init Error: ${err.message}</div>`;
+        }
+
         const auth = firebase.auth();
         const db = firebase.firestore();
         const APP_ID = "cpfb-explorer-30";
 
         const BOOTH_DATA = [
-            { id: 'forest', realmName: "Verdant Grove", code: "100", itemName: "Sunlight Seed", title: "Sustainable Growth & ESG", why: "Build long-term value via ESG.", url: "https://learning.portal/esg", color: "emerald", icon: "trees" },
-            { id: 'island', realmName: "Cerulean Depths", code: "200", itemName: "Abyssal Pearl", title: "Data Analytics", why: "Master complex data patterns.", url: "https://learning.portal/data", color: "cyan", icon: "waves" },
-            { id: 'swamp', realmName: "Shadow Spire", code: "300", itemName: "Void Shard", title: "Cybersecurity", why: "Navigate digital threats.", url: "https://learning.portal/security", color: "purple", icon: "skull" },
-            { id: 'mountain', realmName: "Iron Peak", code: "400", itemName: "Magma Core", title: "Leadership", why: "Lead through transformation.", url: "https://learning.portal/leadership", color: "orange", icon: "mountain" },
-            { id: 'plains', realmName: "Golden Expanse", code: "500", itemName: "Solar Lens", title: "Strategic Foresight", why: "Illuminate future trends.", url: "https://learning.portal/foresight", color: "amber", icon: "sun" }
+            { id: 'forest', realmName: "Verdant Grove", code: "100", itemName: "Sunlight Seed", title: "Sustainable Growth & ESG", why: "Build value via ESG.", url: "https://learning.portal/esg", color: "emerald", icon: "Trees" },
+            { id: 'island', realmName: "Cerulean Depths", code: "200", itemName: "Abyssal Pearl", title: "Data Analytics", why: "Master complex data.", url: "https://learning.portal/data", color: "cyan", icon: "Waves" },
+            { id: 'swamp', realmName: "Shadow Spire", code: "300", itemName: "Void Shard", title: "Cybersecurity", why: "Protect digital assets.", url: "https://learning.portal/security", color: "purple", icon: "Skull" },
+            { id: 'mountain', realmName: "Iron Peak", code: "400", itemName: "Magma Core", title: "Leadership", why: "Lead through change.", url: "https://learning.portal/leadership", color: "orange", icon: "Mountain" },
+            { id: 'plains', realmName: "Golden Expanse", code: "500", itemName: "Solar Lens", title: "Strategic Foresight", why: "Spot future trends.", url: "https://learning.portal/foresight", color: "amber", icon: "Sun" }
         ];
 
         // --- Helper for Icons ---
-        const LucideIcon = ({ name, className = "", size = 24 }) => {
+        const Icon = ({ name, size = 24, className = "" }) => {
             const iconRef = useRef(null);
             useEffect(() => {
                 if (iconRef.current) {
-                    const iconName = name.charAt(0).toUpperCase() + name.slice(1);
-                    const iconFunc = lucide.icons[iconName];
+                    const iconFunc = lucide.icons[name];
                     if (iconFunc) {
-                        const svg = lucide.createIcons({ icons: { [iconName]: iconFunc } });
+                        lucide.createIcons({ icons: { [name]: iconFunc } });
                     }
                 }
             }, [name]);
-            return <i data-lucide={name} className={className} style={{ width: size, height: size, display: 'inline-block' }}></i>;
+            return <i data-lucide={name.toLowerCase()} className={className} style={{ width: size, height: size }}></i>;
         };
 
         function App() {
@@ -84,17 +96,16 @@
             useEffect(() => {
                 const unsub = auth.onAuthStateChanged(async (u) => {
                     if (!u) {
-                        await auth.signInAnonymously().catch(console.error);
+                        await auth.signInAnonymously().catch(e => console.error(e));
                     } else {
                         setUser(u);
-                        // Restore progress from Firestore
                         try {
                             const snap = await db.doc(`artifacts/${APP_ID}/users/${u.uid}/state/progress`).get();
-                            if (snap.exists) {
+                            if (snap.exists()) {
                                 setUnlocked(snap.data().unlocked || {});
                                 if (snap.data().completed) setSubmitted(true);
                             }
-                        } catch (e) { console.error("Restore failed:", e); }
+                        } catch (e) { console.error(e); }
                         setIsReady(true);
                     }
                 });
@@ -125,112 +136,93 @@
                     await db.collection(`artifacts/${APP_ID}/public/data/registrations`).add(payload);
                     await db.doc(`artifacts/${APP_ID}/users/${user.uid}/state/progress`).update({ completed: true });
                     setSubmitted(true);
-                } catch (e) { 
-                    setSyncError(true); 
-                    console.error(e);
-                }
+                } catch (e) { setSyncError(true); }
             };
 
             if (!isReady) return (
-                <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center gap-4 text-slate-500">
-                    <div className="w-10 h-10 border-4 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
-                    <p className="text-[10px] font-mono tracking-widest uppercase animate-pulse">Establishing Uplink...</p>
+                <div className="h-screen flex flex-col items-center justify-center gap-4 bg-slate-950">
+                    <div className="w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+                    <p className="text-[10px] font-mono tracking-widest uppercase text-slate-600">Syncing with Archive...</p>
                 </div>
             );
 
             const activeData = BOOTH_DATA.find(d => d.id === activeId);
-            const unlockedCount = Object.keys(unlocked).length;
+            const count = Object.keys(unlocked).length;
 
             return (
-                <div className={`min-h-screen transition-bg duration-1000 font-sans text-slate-100 ${activeData ? `bg-${activeData.color}-950` : 'bg-slate-950'}`}>
-                    {showAdmin && <AdminDash onClose={() => setShowAdmin(false)} db={db} />}
+                <div className={`min-h-screen transition-colors duration-1000 ${activeData ? `bg-${activeData.color}-950` : 'bg-slate-950'}`}>
+                    {showAdmin && <AdminUI onClose={() => setShowAdmin(false)} db={db} />}
                     
                     <header className="p-6 border-b border-white/10 flex justify-between items-center backdrop-blur-md sticky top-0 z-50">
                         <div onClick={() => { setAdminClicks(c => c+1); if(adminClicks >= 4) setShowAdmin(true); }}>
                             <h1 className="font-black text-xl tracking-tighter uppercase">CPFB EXPLORER 3.0</h1>
-                            <p className="text-[9px] font-mono text-slate-500">{unlockedCount}/5 REALMS SYNCED</p>
+                            <p className="text-[9px] font-mono text-slate-500 uppercase">{count}/5 REALMS SYNCED</p>
                         </div>
-                        <div className="flex gap-1">
-                            {BOOTH_DATA.map(b => <div key={b.id} className={`w-2 h-2 rounded-full transition-all duration-500 ${unlocked[b.id] ? 'bg-amber-400 shadow-[0_0_10px_#fbbf24]' : 'bg-white/10'}`}></div>)}
+                        <div className="flex gap-1.5">
+                            {BOOTH_DATA.map(b => <div key={b.id} className={`w-2 h-2 rounded-full ${unlocked[b.id] ? 'bg-amber-400 shadow-[0_0_8px_#f59e0b]' : 'bg-white/10'}`}></div>)}
                         </div>
                     </header>
 
                     <main className="max-w-md mx-auto p-6 pb-32">
                         {submitted ? (
                             <PassView data={formData} />
-                        ) : unlockedCount === 5 && !activeId ? (
+                        ) : count === 5 && !activeId ? (
                             <FormView formData={formData} setFormData={setFormData} onFinish={handleFinalSubmit} isConfirming={isConfirming} setIsConfirming={setIsConfirming} syncError={syncError} />
                         ) : activeId ? (
                             <InputView data={activeData} isUnlocked={unlocked[activeId]} onUnlock={() => handleUnlock(activeId)} onBack={() => setActiveId(null)} />
                         ) : (
-                            <HubView BOOTH_DATA={BOOTH_DATA} unlocked={unlocked} onSelect={setActiveId} />
+                            <div className="space-y-6 animate-in slide-in-from-bottom-4">
+                                <div className="bg-white/5 border border-white/10 p-6 rounded-3xl space-y-2">
+                                    <div className="flex items-center gap-2 text-amber-500 font-bold uppercase text-[10px] tracking-widest"><Icon name="Info" size={14}/> Briefing</div>
+                                    <p className="text-[11px] text-slate-400 italic">Sync keys from all booths to build your roadmap and unlock rewards.</p>
+                                </div>
+                                <div className="grid gap-3">
+                                    {BOOTH_DATA.map(b => (
+                                        <button key={b.id} onClick={() => setActiveId(b.id)} className={`flex items-center p-5 rounded-3xl border transition-all text-left ${unlocked[b.id] ? `bg-white/10 border-amber-500/50` : 'bg-white/5 border-white/5'}`}>
+                                            <div className={`p-4 rounded-2xl mr-4 ${unlocked[b.id] ? 'bg-amber-400 text-black shadow-lg' : 'bg-white/5 text-white/20'}`}>
+                                                <Icon name={unlocked[b.id] ? "ShieldCheck" : b.icon} size={24} />
+                                            </div>
+                                            <div className="flex-1">
+                                                <h3 className="font-bold text-sm uppercase">{b.realmName}</h3>
+                                                <p className="text-[9px] font-mono text-white/30 uppercase">{unlocked[b.id] ? b.itemName : 'Offline'}</p>
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
                         )}
                     </main>
+                    <footer className="fixed bottom-0 left-0 right-0 p-6 text-center text-[9px] font-mono text-slate-800 tracking-widest bg-slate-950/80 backdrop-blur-sm">CHARTING THE FUTURE OF LEARNING</footer>
                 </div>
             );
         }
 
-        // --- Components ---
-
-        function HubView({ BOOTH_DATA, unlocked, onSelect }) {
-            return (
-                <div className="space-y-6">
-                    <div className="bg-white/5 border border-white/10 p-6 rounded-3xl space-y-2">
-                        <p className="text-amber-400 font-bold text-xs uppercase tracking-widest">Mission Brief</p>
-                        <p className="text-[11px] text-slate-400 leading-relaxed italic">Visit booths, collect keys, and sync all realms to claim rewards.</p>
-                    </div>
-                    <div className="grid gap-3">
-                        {BOOTH_DATA.map(b => (
-                            <button key={b.id} onClick={() => onSelect(b.id)} className={`flex items-center p-5 rounded-3xl border transition-all text-left ${unlocked[b.id] ? `bg-white/5 border-amber-500/50 shadow-lg` : 'bg-white/5 border-white/5'}`}>
-                                <div className={`p-4 rounded-2xl mr-4 ${unlocked[b.id] ? 'bg-amber-400 text-black' : 'bg-white/5 text-white/20'}`}>
-                                    <LucideIcon name={unlocked[b.id] ? "shieldCheck" : b.icon} size={24} />
-                                </div>
-                                <div className="flex-1">
-                                    <h3 className="font-bold text-sm uppercase">{b.realmName}</h3>
-                                    <p className="text-[9px] font-mono text-white/30 uppercase">{unlocked[b.id] ? b.itemName : 'Status: Offline'}</p>
-                                </div>
-                            </button>
-                        ))}
-                    </div>
-                </div>
-            );
-        }
+        // --- Sub-Components ---
 
         function InputView({ data, isUnlocked, onUnlock, onBack }) {
             const [val, setVal] = useState('');
             const [load, setLoad] = useState(false);
             const [shake, setShake] = useState(false);
-
-            const submit = () => {
-                setLoad(true);
-                setTimeout(() => {
-                    setLoad(false);
-                    if (val === data.code) onUnlock();
-                    else { setShake(true); setTimeout(() => { setShake(false); setVal(''); }, 500); }
-                }, 1000);
-            };
-
             if (isUnlocked) return (
-                <div className="space-y-6 animate-in zoom-in text-center">
+                <div className="space-y-6 text-center animate-in zoom-in">
                     <div className="bg-white/5 border border-white/10 p-8 rounded-[3rem] space-y-6">
-                        <div className="w-16 h-16 bg-amber-500 rounded-full flex items-center justify-center mx-auto shadow-2xl animate-pulse"><LucideIcon name="zap" className="text-black" /></div>
-                        <h3 className="font-black text-xl uppercase tracking-tighter">Sync Active</h3>
+                        <div className="w-16 h-16 bg-amber-500 rounded-full flex items-center justify-center mx-auto shadow-2xl animate-pulse"><Icon name="Zap" className="text-black" /></div>
+                        <h3 className="font-black text-xl uppercase">Sync established</h3>
                         <div className="bg-black/40 p-5 rounded-2xl text-left border border-white/5 space-y-2">
-                            <p className="text-xs font-bold uppercase">{data.title}</p>
-                            <p className="text-[10px] text-slate-400 italic">"{data.why}"</p>
+                            <p className="text-xs font-bold uppercase text-white leading-tight">{data.title}</p>
+                            <p className="text-[10px] text-slate-500 italic">"{data.why}"</p>
                         </div>
                     </div>
                     <button onClick={onBack} className="w-full py-5 bg-white/10 rounded-2xl font-black text-xs uppercase tracking-widest">Back to Hub</button>
                 </div>
             );
-
             return (
                 <div className={`space-y-10 ${shake ? 'animate-shake' : ''}`}>
                     <div className="bg-black/40 border border-white/10 p-12 rounded-[3rem] text-center shadow-inner">
-                        <p className="text-[10px] font-mono text-slate-500 uppercase tracking-widest mb-6">Awaiting Frequency</p>
+                        <p className="text-[10px] font-mono text-slate-500 uppercase tracking-widest mb-6">Enter Realm Key</p>
                         <input type="number" value={val} onChange={e=>setVal(e.target.value.slice(0,3))} className="bg-transparent border-b-2 border-white/20 text-center text-5xl font-mono tracking-widest w-full outline-none text-white pb-2" placeholder="•••" />
                     </div>
-                    <button onClick={submit} disabled={val.length<3 || load} className="w-full py-6 bg-amber-500 text-black font-black rounded-3xl uppercase tracking-widest active:scale-95 shadow-xl">
+                    <button onClick={() => { setLoad(true); setTimeout(() => { if(val===data.code) onUnlock(); else {setShake(true); setTimeout(()=>setShake(false),500); setVal('');} setLoad(false); }, 800); }} className="w-full py-6 bg-amber-500 text-black font-black rounded-3xl uppercase tracking-widest active:scale-95 transition-all">
                         {load ? "VALIDATING..." : "ESTABLISH UPLINK"}
                     </button>
                 </div>
@@ -238,70 +230,60 @@
         }
 
         function FormView({ formData, setFormData, onFinish, isConfirming, setIsConfirming, syncError }) {
-            const [loading, setLoading] = useState(false);
-            const upd = (k, v) => setFormData({...formData, [k]: v});
-
+            const [load, setLoad] = useState(false);
             if (isConfirming) return (
-                <div className="bg-slate-900 border-2 border-amber-500 p-8 rounded-[3rem] space-y-6 shadow-2xl animate-in zoom-in">
-                    <h4 className="text-center font-black uppercase text-amber-500 tracking-widest">Verify Direct Message</h4>
-                    <div className="bg-black/40 p-6 rounded-2xl border border-white/5 space-y-4">
-                        <div><p className="text-[8px] text-slate-500 uppercase">Explorer</p><p className="text-sm font-bold uppercase">{formData.name}</p></div>
-                        <div><p className="text-[8px] text-slate-500 uppercase">Archive Link</p><p className="text-[10px] font-mono">{formData.email}</p></div>
-                        <div className={`p-4 rounded-xl border ${formData.supEmail ? 'border-amber-500/30 bg-amber-500/5' : 'border-white/5 bg-slate-950'}`}><p className="text-[8px] text-slate-500 uppercase">Supervisor Sync</p><p className="text-[10px]">{formData.supEmail || 'None'}</p></div>
+                <div className="bg-slate-900 border-2 border-amber-500 p-8 rounded-[3rem] space-y-6 shadow-2xl">
+                    <h4 className="text-center font-black uppercase text-amber-500 tracking-widest text-sm">Verify Details</h4>
+                    <div className="bg-black/40 p-6 rounded-2xl border border-white/5 space-y-4 text-xs font-bold uppercase">
+                        <div><p className="text-[8px] text-slate-500">Explorer</p><p>{formData.name}</p></div>
+                        <div><p className="text-[8px] text-slate-500">Archive Link</p><p className="lowercase font-mono">{formData.email}</p></div>
+                        <div className={`p-3 rounded-xl border ${formData.supEmail ? 'border-amber-500/30' : 'border-white/5'}`}><p className="text-[8px] text-slate-500">Supervisor Loop</p><p className="lowercase font-mono">{formData.supEmail || 'Not Connected'}</p></div>
                     </div>
-                    {syncError && <p className="text-red-500 text-[9px] text-center font-black">SYNC FAILURE. CHECK WI-FI.</p>}
-                    <button onClick={async () => {setLoading(true); await onFinish(); setLoading(false);}} disabled={loading} className="w-full py-5 bg-amber-500 text-black font-black rounded-3xl uppercase text-xs active:scale-95">
-                        {loading ? "TRANSMITTING..." : "Final Handshake"}
+                    {syncError && <p className="text-red-500 text-[10px] text-center font-black">SYNC FAILURE. CHECK WI-FI.</p>}
+                    <button onClick={async () => { setLoad(true); await onFinish(); setLoad(false); }} className="w-full py-5 bg-amber-500 text-black font-black rounded-3xl uppercase text-xs active:scale-95 transition-all">
+                        {load ? "TRANSMITTING..." : "Final Handshake"}
                     </button>
-                    <button onClick={()=>setIsConfirming(false)} className="w-full text-[9px] text-slate-600 uppercase">Edit Profile</button>
+                    <button onClick={()=>setIsConfirming(false)} className="w-full text-[9px] text-slate-600 uppercase tracking-widest">Edit Details</button>
                 </div>
             );
-
             return (
                 <div className="bg-white/5 border border-white/10 p-8 rounded-[3rem] space-y-4">
-                    <h3 className="text-center font-black uppercase tracking-widest mb-4">Archive Handshake</h3>
-                    <input type="text" placeholder="Full Name *" value={formData.name} onChange={e=>upd('name', e.target.value)} className="w-full bg-black/40 border border-white/10 p-4 rounded-xl text-white outline-none" />
-                    <input type="text" placeholder="Department *" value={formData.dept} onChange={e=>upd('dept', e.target.value)} className="w-full bg-black/40 border border-white/10 p-4 rounded-xl text-white outline-none" />
-                    <input type="email" placeholder="Personal Email *" value={formData.email} onChange={e=>upd('email', e.target.value)} className="w-full bg-black/40 border border-white/10 p-4 rounded-xl text-white outline-none" />
-                    <div className="h-px bg-white/10 my-2" />
-                    <p className="text-[10px] text-amber-500 font-bold uppercase text-center">Include supervisor for bonus reward!</p>
-                    <input type="email" placeholder="Supervisor Email (Optional)" value={formData.supEmail} onChange={e=>upd('supEmail', e.target.value)} className="w-full bg-black/40 border border-white/10 p-4 rounded-xl text-white outline-none" />
-                    <button onClick={()=>setIsConfirming(true)} className="w-full py-5 bg-white text-black font-black rounded-3xl uppercase text-xs active:scale-95 mt-2">Preview Message</button>
+                    <h3 className="text-center font-black uppercase tracking-widest mb-4">Final Data Log</h3>
+                    <input type="text" placeholder="Full Name *" value={formData.name} onChange={e=>setFormData({...formData, name: e.target.value})} className="w-full bg-black/40 border border-white/10 p-4 rounded-xl text-white outline-none" />
+                    <input type="text" placeholder="Dept *" value={formData.dept} onChange={e=>setFormData({...formData, dept: e.target.value})} className="w-full bg-black/40 border border-white/10 p-4 rounded-xl text-white outline-none" />
+                    <input type="email" placeholder="Personal Email *" value={formData.email} onChange={e=>setFormData({...formData, email: e.target.value})} className="w-full bg-black/40 border border-white/10 p-4 rounded-xl text-white outline-none" />
+                    <div className="h-px bg-white/5 my-2" />
+                    <p className="text-[10px] text-amber-500 font-bold uppercase text-center">Include supervisor for bonus gift!</p>
+                    <input type="email" placeholder="Supervisor Email (Optional)" value={formData.supEmail} onChange={e=>setFormData({...formData, supEmail: e.target.value})} className="w-full bg-black/40 border border-white/10 p-4 rounded-xl text-white outline-none" />
+                    <button onClick={()=>setIsConfirming(true)} className="w-full py-5 bg-white text-black font-black rounded-2xl uppercase text-xs mt-2 active:scale-95">Preview Message</button>
                 </div>
             );
         }
 
         function PassView({ data }) {
-            const hasBonus = data.supEmail && data.supEmail.includes('@');
+            const bonus = data.supEmail && data.supEmail.includes('@');
             return (
                 <div className="animate-in zoom-in">
-                    <div className={`bg-slate-900 border-4 ${hasBonus ? 'border-amber-500 shadow-[0_0_40px_rgba(251,191,36,0.3)]' : 'border-slate-800'} rounded-[3.5rem] overflow-hidden`}>
-                        <div className={`${hasBonus ? 'bg-amber-500 text-black' : 'bg-slate-800 text-slate-400'} p-12 text-center`}>
-                            <div className="flex justify-center mb-4"><LucideIcon name={hasBonus ? "award" : "ticket"} size={64} /></div>
-                            <h2 className="text-3xl font-black uppercase tracking-tighter">{hasBonus ? 'Bonus Pass' : 'Standard Pass'}</h2>
-                            <p className="text-[11px] font-mono uppercase opacity-50">Redemption Status: VALID</p>
+                    <div className={`bg-slate-900 border-4 ${bonus ? 'border-amber-500 shadow-[0_0_40px_rgba(245,158,11,0.3)]' : 'border-slate-800'} rounded-[3.5rem] overflow-hidden shadow-2xl`}>
+                        <div className={`${bonus ? 'bg-amber-500 text-black' : 'bg-slate-800 text-slate-400'} p-12 text-center font-black uppercase`}>
+                            <Icon name={bonus ? "Award" : "Ticket"} size={64} className="mx-auto mb-4" />
+                            <h2 className="text-3xl tracking-tighter">{bonus ? 'Bonus Pass' : 'Standard Pass'}</h2>
+                            <p className="text-[10px] opacity-60">Status: AUTHORIZED</p>
                         </div>
                         <div className="p-10 space-y-6">
                             <div className="flex justify-between items-center pb-2 border-b border-white/10 uppercase"><span className="text-[9px] text-slate-600">Explorer</span><span className="text-sm font-bold">{data.name}</span></div>
                             <p className="text-[10px] text-slate-500 text-center italic leading-relaxed">Show screen to organisers to claim rewards. Roadmap arriving in 1-2 days.</p>
                         </div>
-                        <div className="flex justify-between px-3 pb-6">{[...Array(12)].map((_, i) => (<div key={i} className="w-2.5 h-2.5 rounded-full bg-slate-950" />))}</div>
+                        <div className="flex justify-between px-3 pb-6 bg-slate-900">{[...Array(12)].map((_, i) => (<div key={i} className="w-2.5 h-2.5 rounded-full bg-slate-950" />))}</div>
                     </div>
-                    <button onClick={()=>window.location.reload()} className="w-full mt-10 text-[10px] font-mono text-white/10 uppercase tracking-widest underline decoration-dotted">New Mission</button>
+                    <button onClick={()=>window.location.reload()} className="w-full mt-10 text-[10px] font-mono text-white/10 uppercase tracking-widest underline decoration-dotted">Initialize New Session</button>
                 </div>
             );
         }
 
-        function AdminDash({ onClose, db }) {
+        function AdminUI({ onClose, db }) {
             const [logs, setLogs] = useState([]);
             useEffect(() => {
                 const unsub = db.collection(`artifacts/${APP_ID}/public/data/registrations`).onSnapshot(s => {
                     const d = s.docs.map(x => ({id: x.id, ...x.data()}));
-                    setLogs(d.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp)));
-                });
-                return unsub;
-            }, []);
-
-            return (
-                <div className="fixed inset-0 z-[100] bg-slate-950 p-6 flex flex-col animate-in fade-in">
-           
+          
